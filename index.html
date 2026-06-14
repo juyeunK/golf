@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>골프 클럽 시뮬레이터</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-900 text-slate-100 p-4 md:p-8 font-sans">
+  <div class="max-w-6xl mx-auto space-y-6">
+    
+    <!-- 헤더 -->
+    <header class="flex items-center justify-between border-b border-slate-700 pb-4">
+      <div class="flex items-center space-x-3">
+        <!-- Activity Icon -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 text-emerald-400"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        <h1 class="text-2xl md:text-3xl font-bold tracking-tight">골프 클럽 시뮬레이터</h1>
+      </div>
+      <p class="text-slate-400 text-sm hidden md:block">가상의 스윙 데이터를 분석합니다</p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- 컨트롤 패널 (좌측) -->
+      <div class="bg-slate-800 p-6 rounded-2xl shadow-xl space-y-6 border border-slate-700">
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-3">클럽 선택</label>
+          <div id="club-container" class="grid grid-cols-2 gap-2">
+            <!-- 자바스크립트로 클럽 버튼들이 생성되는 영역 -->
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-2">
+            <label class="block text-sm font-medium text-slate-300">스윙 파워 (%)</label>
+            <span id="power-display" class="text-emerald-400 font-bold">100%</span>
+          </div>
+          <input 
+            type="range" 
+            id="power-input"
+            min="50" 
+            max="120" 
+            value="100"
+            class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+          />
+          <div class="flex justify-between text-xs text-slate-500 mt-2">
+            <span>컨트롤 (50%)</span>
+            <span>풀스윙 (100%)</span>
+            <span>오버스윙 (120%)</span>
+          </div>
+        </div>
+
+        <button 
+          id="swing-btn"
+          class="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-lg transition-colors flex items-center justify-center space-x-2"
+        >
+          <!-- Crosshair Icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>
+          <span>스윙하기!</span>
+        </button>
+      </div>
+
+      <!-- 결과 시각화 및 데이터 (우측) -->
+      <div class="lg:col-span-2 space-y-6">
+        
+        <!-- 캔버스 (시각화) -->
+        <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
+          <h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center">
+            <!-- Wind Icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 mr-2 text-blue-400"><path d="M9.59 4.59A2 2 0 1 1 11 8H2"></path><path d="M12.59 14.41A2 2 0 1 0 14 16H2"></path><path d="M15.73 7.73A2.5 2.5 0 1 1 19.5 12H2"></path></svg>
+            샷 궤적
+          </h2>
+          <div class="relative w-full aspect-[21/9] bg-slate-950 rounded-xl overflow-hidden border border-slate-700/50">
+            <canvas 
+              id="trajectory-canvas" 
+              width="800" 
+              height="300" 
+              class="absolute inset-0 w-full h-full object-fill"
+            ></canvas>
+            
+            <div id="canvas-overlay" class="absolute inset-0 flex items-center justify-center text-slate-500">
+              스윙을 시작하여 궤적을 확인하세요
+            </div>
+            
+            <!-- 100m, 200m 마커 -->
+            <div class="absolute bottom-0 left-[35%] text-[10px] text-slate-500 pb-1">100m</div>
+            <div class="absolute bottom-0 left-[71%] text-[10px] text-slate-500 pb-1">200m</div>
+          </div>
+        </div>
+
+        <!-- 현재 샷 데이터 요약 -->
+        <div id="current-shot-container" class="grid grid-cols-2 md:grid-cols-4 gap-4 hidden">
+          <!-- JS에서 데이터 채움 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 히스토리 테이블 -->
+    <div id="history-section" class="bg-slate-800 rounded-2xl shadow-xl border border-slate-700 overflow-hidden mt-6 hidden">
+      <div class="p-4 bg-slate-800/50 border-b border-slate-700 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-slate-200 flex items-center">
+          <!-- RotateCcw Icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 mr-2 text-slate-400"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+          최근 샷 기록
+        </h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="text-xs text-slate-400 bg-slate-900/50 uppercase">
+            <tr>
+              <th class="px-6 py-3">클럽</th>
+              <th class="px-6 py-3">파워</th>
+              <th class="px-6 py-3">클럽 스피드</th>
+              <th class="px-6 py-3">볼 스피드</th>
+              <th class="px-6 py-3">스매시 팩터</th>
+              <th class="px-6 py-3">캐리 (m)</th>
+              <th class="px-6 py-3 font-bold text-emerald-400">총 거리 (m)</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody">
+            <!-- JS에서 히스토리 데이터 채움 -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // 클럽 기본 제원 데이터 (스피드: m/s 기준)
+    const CLUB_DATA = {
+      'Driver': { name: '드라이버', loft: 10.5, avgSpeed: 45, smashFactor: 1.48, roll: 20, color: '#ef4444' },
+      'Wood3': { name: '3번 우드', loft: 15.0, avgSpeed: 42, smashFactor: 1.42, roll: 15, color: '#f97316' },
+      'Iron5': { name: '5번 아이언', loft: 27.0, avgSpeed: 38, smashFactor: 1.35, roll: 10, color: '#eab308' },
+      'Iron7': { name: '7번 아이언', loft: 34.0, avgSpeed: 35, smashFactor: 1.30, roll: 5, color: '#22c55e' },
+      'Iron9': { name: '9번 아이언', loft: 42.0, avgSpeed: 32, smashFactor: 1.25, roll: 2, color: '#3b82f6' },
+      'Pitching': { name: '피칭 웨지', loft: 46.0, avgSpeed: 30, smashFactor: 1.20, roll: 1, color: '#a855f7' },
+      'Sand': { name: '샌드 웨지', loft: 56.0, avgSpeed: 28, smashFactor: 1.15, roll: 0, color: '#ec4899' },
+    };
+
+    // 상태 변수
+    let selectedClub = 'Iron7';
+    let power = 100;
+    let history = [];
+    let currentShot = null;
+
+    // DOM 요소 캐싱
+    const clubContainer = document.getElementById('club-container');
+    const powerInput = document.getElementById('power-input');
+    const powerDisplay = document.getElementById('power-display');
+    const swingBtn = document.getElementById('swing-btn');
+    const canvas = document.getElementById('trajectory-canvas');
+    const ctx = canvas.getContext('2d');
+    const canvasOverlay = document.getElementById('canvas-overlay');
+    const currentShotContainer = document.getElementById('current-shot-container');
+    const historySection = document.getElementById('history-section');
+    const historyTbody = document.getElementById('history-tbody');
+
+    // 초기화
+    function init() {
+      renderClubs();
+      
+      powerInput.addEventListener('input', (e) => {
+        power = e.target.value;
+        powerDisplay.innerText = power + '%';
+      });
+
+      swingBtn.addEventListener('click', handleSwing);
+    }
+
+    // 클럽 버튼 렌더링
+    function renderClubs() {
+      clubContainer.innerHTML = '';
+      for (const [key, data] of Object.entries(CLUB_DATA)) {
+        const btn = document.createElement('button');
+        btn.innerText = data.name;
+        
+        // Tailwind 클래스 적용
+        const baseClasses = "py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200";
+        const activeClasses = "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30";
+        const inactiveClasses = "bg-slate-700 text-slate-300 hover:bg-slate-600";
+        
+        btn.className = `${baseClasses} ${selectedClub === key ? activeClasses : inactiveClasses}`;
+        
+        btn.onclick = () => {
+          selectedClub = key;
+          renderClubs(); // 선택 상태 업데이트를 위한 재렌더링
+        };
+        
+        clubContainer.appendChild(btn);
+      }
+    }
+
+    // 스윙 실행 로직
+    function handleSwing() {
+      const club = CLUB_DATA[selectedClub];
+      
+      // 파워에 따른 스피드 계산 (약간의 랜덤성 추가 -2% ~ +2%)
+      const powerRatio = power / 100;
+      const randomVariance = (Math.random() * 0.04) - 0.02 + 1;
+      
+      const clubSpeed = club.avgSpeed * powerRatio * randomVariance;
+      const ballSpeed = clubSpeed * club.smashFactor;
+      
+      // 비거리 계산
+      const launchAngle = club.loft * 0.8; 
+      const angleInRads = launchAngle * (Math.PI / 180);
+      
+      const gravity = 9.8;
+      const theoreticalCarry = (Math.pow(ballSpeed, 2) * Math.sin(2 * angleInRads)) / gravity;
+      
+      const carryMultiplier = 0.85; 
+      const carryDistance = theoreticalCarry * carryMultiplier;
+      const totalDistance = carryDistance + club.roll * powerRatio;
+
+      currentShot = {
+        id: Date.now(),
+        clubName: club.name,
+        clubColor: club.color,
+        power: power,
+        clubSpeed: clubSpeed.toFixed(1),
+        ballSpeed: ballSpeed.toFixed(1),
+        smashFactor: club.smashFactor.toFixed(2),
+        carry: carryDistance.toFixed(1),
+        total: totalDistance.toFixed(1),
+        launchAngle: launchAngle.toFixed(1),
+        maxHeight: ((Math.pow(ballSpeed * Math.sin(angleInRads), 2)) / (2 * gravity) * 0.8).toFixed(1)
+      };
+
+      // 히스토리 업데이트 (최근 10개)
+      history.unshift(currentShot);
+      if (history.length > 10) history.pop();
+
+      // UI 및 캔버스 업데이트
+      drawTrajectory();
+      updateCurrentShotUI();
+      updateHistoryUI();
+    }
+
+    // 궤적 그리기 (Canvas)
+    function drawTrajectory() {
+      if (!currentShot) return;
+      
+      canvasOverlay.style.display = 'none';
+
+      const width = canvas.width;
+      const height = canvas.height;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // 배경 그리드
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < width; i += 50) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, height);
+        ctx.stroke();
+      }
+      for (let i = 0; i < height; i += 50) {
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(width, i);
+        ctx.stroke();
+      }
+
+      // 렌더링 스케일 설정
+      const maxDistScale = 280; 
+      const maxHeightScale = 50; 
+
+      const carryX = (currentShot.carry / maxDistScale) * width;
+      const totalX = (currentShot.total / maxDistScale) * width;
+      const peakY = height - ((currentShot.maxHeight / maxHeightScale) * height);
+
+      // 궤적 (포물선)
+      ctx.beginPath();
+      ctx.moveTo(0, height);
+      ctx.quadraticCurveTo(carryX / 2, peakY - 20, carryX, height);
+      ctx.strokeStyle = currentShot.clubColor;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // 런(Roll) 구간 (점선)
+      ctx.beginPath();
+      ctx.setLineDash([5, 5]);
+      ctx.moveTo(carryX, height);
+      ctx.lineTo(totalX, height);
+      ctx.strokeStyle = currentShot.clubColor;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 랜딩 마커
+      ctx.beginPath();
+      ctx.arc(carryX, height - 3, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.stroke();
+
+      // 최종 위치 마커
+      ctx.beginPath();
+      ctx.arc(totalX, height - 3, 5, 0, Math.PI * 2);
+      ctx.fillStyle = currentShot.clubColor;
+      ctx.fill();
+    }
+
+    // 현재 샷 데이터 패널 업데이트
+    function updateCurrentShotUI() {
+      currentShotContainer.classList.remove('hidden');
+      currentShotContainer.innerHTML = `
+        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col items-center justify-center">
+          <span class="text-slate-400 text-sm mb-1">총 비거리 (Total)</span>
+          <div class="flex items-baseline space-x-1">
+            <span class="text-3xl font-bold text-white">${currentShot.total}</span>
+            <span class="text-slate-500 text-sm">m</span>
+          </div>
+        </div>
+        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col items-center justify-center">
+          <span class="text-slate-400 text-sm mb-1">캐리 (Carry)</span>
+          <div class="flex items-baseline space-x-1">
+            <span class="text-2xl font-bold text-slate-200">${currentShot.carry}</span>
+            <span class="text-slate-500 text-sm">m</span>
+          </div>
+        </div>
+        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col items-center justify-center">
+          <span class="text-slate-400 text-sm mb-1">볼 스피드</span>
+          <div class="flex items-baseline space-x-1">
+            <span class="text-2xl font-bold text-blue-400">${currentShot.ballSpeed}</span>
+            <span class="text-slate-500 text-sm">m/s</span>
+          </div>
+        </div>
+        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col items-center justify-center">
+          <span class="text-slate-400 text-sm mb-1">발사각 (Launch)</span>
+          <div class="flex items-baseline space-x-1">
+            <span class="text-2xl font-bold text-orange-400">${currentShot.launchAngle}</span>
+            <span class="text-slate-500 text-sm">deg</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // 히스토리 테이블 업데이트
+    function updateHistoryUI() {
+      if (history.length > 0) {
+        historySection.classList.remove('hidden');
+      }
+      
+      historyTbody.innerHTML = history.map(shot => `
+        <tr class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
+          <td class="px-6 py-4 font-medium flex items-center space-x-2">
+            <div class="w-3 h-3 rounded-full" style="background-color: ${shot.clubColor}"></div>
+            <span>${shot.clubName}</span>
+          </td>
+          <td class="px-6 py-4">${shot.power}%</td>
+          <td class="px-6 py-4">${shot.clubSpeed} m/s</td>
+          <td class="px-6 py-4 text-blue-400">${shot.ballSpeed} m/s</td>
+          <td class="px-6 py-4">${shot.smashFactor}</td>
+          <td class="px-6 py-4">${shot.carry}</td>
+          <td class="px-6 py-4 font-bold text-emerald-400">${shot.total}</td>
+        </tr>
+      `).join('');
+    }
+
+    // 앱 실행
+    init();
+  </script>
+</body>
+</html>
